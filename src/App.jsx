@@ -1,87 +1,112 @@
-import { useState, useEffect } from "react";
-import "./PingMe.css";
+import React, { useState, useEffect } from 'react';
+import { db } from './firebase';
+import { ref, push, onValue } from 'firebase/database';
 
-const users = ["YoungKheed", "Friend001"];
+// Login Component
+function Login({ onLogin }) {
+  const [you, setYou] = useState('');
+  const [friend, setFriend] = useState('');
 
-export default function App() {
-  const [currentUser, setCurrentUser] = useState("");
-  const [selectedFriend, setSelectedFriend] = useState("");
-  const [message, setMessage] = useState("");
-  const [chats, setChats] = useState({});
+  return (
+    <div style={{ padding: 20, maxWidth: 400, margin: '100px auto', textAlign: 'center' }}>
+      <h2>👋 Welcome to PingMe</h2>
+      <input
+        type="text"
+        placeholder="Your nickname"
+        value={you}
+        onChange={(e) => setYou(e.target.value)}
+        style={{ display: 'block', margin: '10px auto', padding: 8, width: '100%' }}
+      />
+      <input
+        type="text"
+        placeholder="Friend's nickname"
+        value={friend}
+        onChange={(e) => setFriend(e.target.value)}
+        style={{ display: 'block', margin: '10px auto', padding: 8, width: '100%' }}
+      />
+      <button
+        onClick={() => you && friend && onLogin(you, friend)}
+        style={{ padding: '10px 20px', background: '#007bff', color: '#fff', border: 'none', borderRadius: 5 }}
+      >
+        Start Chat
+      </button>
+    </div>
+  );
+}
+
+// Chat Component
+function Chat({ userName, friendName }) {
+  const [message, setMessage] = useState('');
+  const [messages, setMessages] = useState([]);
+
+  const chatId = [userName, friendName].sort().join('_');
+  const chatRef = ref(db, `chats/${chatId}`);
 
   useEffect(() => {
-    document.title = "PingMe";
+    const unsubscribe = onValue(chatRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      const msgs = Object.values(data);
+      setMessages(msgs);
+    });
+    return () => unsubscribe();
   }, []);
 
   const handleSend = () => {
     if (!message.trim()) return;
-
-    const chatKey = [currentUser, selectedFriend].sort().join("_");
-    const newMsg = {
-      sender: currentUser,
-      text: message.trim(),
-      time: new Date().toLocaleTimeString(),
-    };
-
-    setChats((prev) => ({
-      ...prev,
-      [chatKey]: [...(prev[chatKey] || []), newMsg],
-    }));
-
-    setMessage("");
+    push(chatRef, {
+      sender: userName,
+      text: message,
+      timestamp: new Date().toLocaleTimeString()
+    });
+    setMessage('');
   };
 
-  const currentChatKey =
-    currentUser && selectedFriend
-      ? [currentUser, selectedFriend].sort().join("_")
-      : null;
-
   return (
-    <div className="app-container">
-      <h1>PingMe 💬</h1>
+    <div style={{ maxWidth: 500, margin: "auto", marginTop: 50, padding: 20, borderRadius: 10, background: "#fff", boxShadow: "0 0 10px #ccc" }}>
+      <h2 style={{ textAlign: 'center' }}>PingMe 💬</h2>
+      <h4>Chatting with <span style={{ color: '#007bff' }}>{friendName}</span></h4>
 
-      {!currentUser ? (
-        <>
-          <h2>Select your username</h2>
-          {users.map((u) => (
-            <button key={u} onClick={() => setCurrentUser(u)}>
-              {u}
-            </button>
-          ))}
-        </>
-      ) : !selectedFriend ? (
-        <>
-          <h2>Hello {currentUser} 👋</h2>
-          <p>Select a friend to chat with:</p>
-          {users
-            .filter((u) => u !== currentUser)
-            .map((f) => (
-              <button key={f} onClick={() => setSelectedFriend(f)}>
-                {f}
-              </button>
-            ))}
-        </>
-      ) : (
-        <>
-          <h2>Chatting with {selectedFriend}</h2>
-          <div className="chat-box">
-            {(chats[currentChatKey] || []).map((msg, index) => (
-              <div key={index} className="chat-message">
-                <strong>{msg.sender}:</strong> {msg.text}{" "}
-                <time>({msg.time})</time>
-              </div>
-            ))}
-          </div>
+      <div style={{ minHeight: 300, margin: "20px 0", padding: 10, background: "#f9f9f9", borderRadius: 5, maxHeight: 300, overflowY: 'auto' }}>
+        {messages.map((msg, idx) => (
+          <p key={idx}>
+            <strong style={{ color: msg.sender === userName ? 'blue' : 'green' }}>
+              {msg.sender}:
+            </strong> {msg.text}
+            <span style={{ fontSize: 12, color: '#aaa' }}> ({msg.timestamp})</span>
+          </p>
+        ))}
+      </div>
 
-          <input
-            type="text"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Type your message..."
-          />
-          <button onClick={handleSend}>Send</button>
-        </>
-      )}
+      <input
+        type="text"
+        value={message}
+        placeholder="Type your message..."
+        onChange={(e) => setMessage(e.target.value)}
+        style={{ width: "70%", padding: 8 }}
+      />
+      <button
+        onClick={handleSend}
+        style={{ padding: "8px 16px", marginLeft: 10, background: "#007bff", color: "#fff", border: "none", borderRadius: 5 }}
+      >
+        Send
+      </button>
     </div>
   );
 }
+
+// App Wrapper
+function App() {
+  const [userName, setUserName] = useState('');
+  const [friendName, setFriendName] = useState('');
+
+  if (!userName || !friendName) {
+    return <Login onLogin={(you, friend) => {
+      setUserName(you);
+      setFriendName(friend);
+    }} />;
+  }
+
+  return <Chat userName={userName} friendName={friendName} />;
+}
+
+export default App;
