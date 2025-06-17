@@ -47,17 +47,20 @@ function Chat({ userName, friendName }) {
       const data = snapshot.val() || {};
       const msgs = Object.values(data);
       setMessages(msgs);
+      console.log('Loaded messages:', msgs);
     });
     return () => unsubscribe();
   }, []);
 
   const handleSend = () => {
     if (!message.trim()) return;
-    push(chatRef, {
+    const msg = {
       sender: userName,
       text: message,
-      timestamp: new Date().toLocaleTimeString()
-    });
+      timestamp: new Date().toLocaleTimeString(),
+    };
+    push(chatRef, msg);
+    console.log('Sent:', msg);
     setMessage('');
   };
 
