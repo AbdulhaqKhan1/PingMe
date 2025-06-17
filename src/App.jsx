@@ -1,36 +1,87 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState, useEffect } from "react";
+import "./PingMe.css";
 
-function App() {
-  const [count, setCount] = useState(0)
+const users = ["YoungKheed", "Friend001"];
+
+export default function App() {
+  const [currentUser, setCurrentUser] = useState("");
+  const [selectedFriend, setSelectedFriend] = useState("");
+  const [message, setMessage] = useState("");
+  const [chats, setChats] = useState({});
+
+  useEffect(() => {
+    document.title = "PingMe";
+  }, []);
+
+  const handleSend = () => {
+    if (!message.trim()) return;
+
+    const chatKey = [currentUser, selectedFriend].sort().join("_");
+    const newMsg = {
+      sender: currentUser,
+      text: message.trim(),
+      time: new Date().toLocaleTimeString(),
+    };
+
+    setChats((prev) => ({
+      ...prev,
+      [chatKey]: [...(prev[chatKey] || []), newMsg],
+    }));
+
+    setMessage("");
+  };
+
+  const currentChatKey =
+    currentUser && selectedFriend
+      ? [currentUser, selectedFriend].sort().join("_")
+      : null;
 
   return (
-    <>
-    <h1 className='text-red-500'>Hello orld</h1>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    <div className="app-container">
+      <h1>PingMe 💬</h1>
 
-export default App
+      {!currentUser ? (
+        <>
+          <h2>Select your username</h2>
+          {users.map((u) => (
+            <button key={u} onClick={() => setCurrentUser(u)}>
+              {u}
+            </button>
+          ))}
+        </>
+      ) : !selectedFriend ? (
+        <>
+          <h2>Hello {currentUser} 👋</h2>
+          <p>Select a friend to chat with:</p>
+          {users
+            .filter((u) => u !== currentUser)
+            .map((f) => (
+              <button key={f} onClick={() => setSelectedFriend(f)}>
+                {f}
+              </button>
+            ))}
+        </>
+      ) : (
+        <>
+          <h2>Chatting with {selectedFriend}</h2>
+          <div className="chat-box">
+            {(chats[currentChatKey] || []).map((msg, index) => (
+              <div key={index} className="chat-message">
+                <strong>{msg.sender}:</strong> {msg.text}{" "}
+                <time>({msg.time})</time>
+              </div>
+            ))}
+          </div>
+
+          <input
+            type="text"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Type your message..."
+          />
+          <button onClick={handleSend}>Send</button>
+        </>
+      )}
+    </div>
+  );
+}
